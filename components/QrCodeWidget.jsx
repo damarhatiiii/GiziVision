@@ -20,6 +20,19 @@ export default function QrCodeWidget() {
   const fetchServerInfo = async () => {
     setLoading(true);
     try {
+      // If browsing the live deployment (not localhost/local IP), use the current public URL directly
+      if (
+        typeof window !== 'undefined' &&
+        window.location.hostname !== 'localhost' &&
+        window.location.hostname !== '127.0.0.1' &&
+        !window.location.hostname.startsWith('192.168.') &&
+        !window.location.hostname.startsWith('10.')
+      ) {
+        setUrl(window.location.origin);
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch('/api/server-info');
       const data = await res.json();
       if (data && data.localUrl) {

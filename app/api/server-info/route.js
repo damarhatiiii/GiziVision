@@ -9,12 +9,38 @@ export async function GET(request) {
   let ipAddress = 'localhost';
   const candidateIps = [];
   
-  // Collect all external IPv4 addresses
+  // Collect all external IPv4 addresses, filtering out virtual/VPN networks first
   for (const name of Object.keys(interfaces)) {
+    const lowerName = name.toLowerCase();
+    
+    // Ignore virtual and VPN network interfaces
+    if (
+      lowerName.includes('wsl') ||
+      lowerName.includes('docker') ||
+      lowerName.includes('vbox') ||
+      lowerName.includes('virtual') ||
+      lowerName.includes('vmware') ||
+      lowerName.includes('vpn') ||
+      lowerName.includes('nord') ||
+      lowerName.includes('lynx') ||
+      lowerName.includes('zerotier') ||
+      lowerName.includes('tailscale') ||
+      lowerName.includes('vethernet') ||
+      lowerName.includes('loopback') ||
+      lowerName.includes('pseudo') ||
+      lowerName.includes('hamachi') ||
+      lowerName.includes('radmin') ||
+      lowerName.includes('tunnel') ||
+      lowerName.includes('tap') ||
+      lowerName.includes('tun')
+    ) {
+      continue;
+    }
+    
     for (const iface of interfaces[name]) {
       if (iface.family === 'IPv4' && !iface.internal) {
         candidateIps.push({
-          name: name.toLowerCase(),
+          name: lowerName,
           address: iface.address
         });
       }
@@ -26,8 +52,7 @@ export async function GET(request) {
     const wifiIp = candidateIps.find(c => 
       c.name.includes('wi-fi') || 
       c.name.includes('wireless') || 
-      c.name.includes('wlan') ||
-      c.name.includes('wi fi')
+      c.name.includes('wlan')
     );
     
     if (wifiIp) {
@@ -43,23 +68,9 @@ export async function GET(request) {
       if (ethernetIp) {
         ipAddress = ethernetIp.address;
       } else {
-        // 3. Prioritize standard home router subnets (192.168.x.x)
+        // 3. Fallback to first remaining standard home router IP (192.168.x.x) if available
         const standardHomeIp = candidateIps.find(c => c.address.startsWith('192.168.'));
-        if (standardHomeIp) {
-          ipAddress = standardHomeIp.address;
-        } else {
-          // 4. Filter out common virtual adapters (WSL, Docker, VirtualBox, vEthernet)
-          const physicalFallback = candidateIps.find(c => 
-            !c.name.includes('vbox') && 
-            !c.name.includes('virtual') && 
-            !c.name.includes('wsl') && 
-            !c.name.includes('docker') &&
-            !c.name.includes('loopback') &&
-            !c.name.includes('vethernet')
-          );
-          
-          ipAddress = physicalFallback ? physicalFallback.address : candidateIps[0].address;
-        }
+        ipAddress = standardHomeIp ? standardHomeIp.address : candidateIps[0].address;
       }
     }
   }

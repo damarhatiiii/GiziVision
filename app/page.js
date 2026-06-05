@@ -251,6 +251,42 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── TIM PENGEMBANG (Bootcamp IT 2026) ── */}
+      <section className="border-t border-border py-16 bg-surface/30">
+        <div className="container mx-auto px-6 max-w-7xl">
+          <div className="card bg-card/40 border border-border-subtle p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="gold-line"></div>
+                <span className="section-label">Pengembang Aplikasi</span>
+              </div>
+              <h3 className="text-xl font-bold text-text-primary">Tim Bootcamp IT 2026</h3>
+              <p className="text-xs text-text-muted mt-1 leading-relaxed max-w-md">
+                Mahasiswa Semester 4 Program Studi Informatika, Universitas Bina Sarana Informatika. 
+                Mengembangkan platform GiziVision sebagai bagian dari tugas kelompok IT.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 md:justify-end max-w-2xl">
+              {[
+                { name: 'Muhammad Damarhati', nim: '15240045' },
+                { name: 'Ananta Bagas Sasena', nim: '15240078' },
+                { name: 'Achmad Nazzri Adlan Fatkhuladzi', nim: '15240054' },
+                { name: 'Akhdan Adiva Sangaji', nim: '15240006' },
+                { name: 'Dyas Fathir Arkananta', nim: '15240091' },
+              ].map((member, i) => (
+                <div 
+                  key={i} 
+                  className="px-4 py-2.5 rounded-xl bg-surface border border-border/80 flex flex-col items-start gap-1 text-left hover:border-gold/30 transition-colors"
+                >
+                  <span className="text-xs font-semibold text-text-primary leading-none">{member.name}</span>
+                  <span className="text-[10px] text-text-muted leading-none font-mono mt-0.5">{member.nim}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }
