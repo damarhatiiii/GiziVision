@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { addHistory } from '@/services/history.service';
-import { UploadCloud, X, Sparkles, Loader2, ImageIcon, AlertTriangle, Settings, Check, Key } from 'lucide-react';
+import { UploadCloud, X, Sparkles, Loader2, ImageIcon, AlertTriangle, Settings, Check, Key, Camera } from 'lucide-react';
 
 /**
  * Compress an image to a small thumbnail for localStorage storage.
@@ -42,6 +42,7 @@ export default function UploadZone() {
   const [hasServerKey, setHasServerKey] = useState(false);
 
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -243,7 +244,7 @@ export default function UploadZone() {
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           className={`
-            relative w-full h-72 rounded-xl border-2 border-dashed
+            relative w-full h-[340px] rounded-xl border-2 border-dashed
             flex flex-col items-center justify-center gap-4 cursor-pointer
             transition-all duration-200
             ${dragActive
@@ -259,21 +260,58 @@ export default function UploadZone() {
             accept="image/*"
             onChange={handleChange}
           />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            className="hidden"
+            accept="image/*"
+            capture="environment"
+            onChange={handleChange}
+          />
+          
           <div className={`
-            w-14 h-14 rounded-xl flex items-center justify-center transition-colors duration-200
+            w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-200
             ${dragActive ? 'bg-gold/15 text-gold' : 'bg-card text-text-muted'}
           `}>
-            <UploadCloud className="w-7 h-7" />
+            <UploadCloud className="w-6 h-6" />
           </div>
+
           <div className="text-center px-6">
             <p className="text-sm font-semibold text-text-primary mb-1">
-              {dragActive ? 'Lepaskan file di sini' : 'Tarik & Lepas Foto Makanan'}
+              {dragActive ? 'Lepaskan file di sini' : 'Pilih Foto Makanan'}
             </p>
-            <p className="text-xs text-text-muted">
-              atau klik untuk memilih file · JPG, PNG, WEBP
+            <p className="text-xs text-text-muted mb-2">
+              Tarik & lepas foto di sini, atau pilih opsi di bawah:
             </p>
           </div>
-          <div className="text-xs text-text-disabled bg-card border border-border px-3 py-1.5 rounded-md">
+
+          {/* Gallery / Camera Buttons Grid */}
+          <div className="grid grid-cols-2 gap-3 w-full max-w-[280px] px-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              className="py-2.5 px-3 rounded-xl bg-card hover:bg-card-hover border border-border hover:border-gold/30 text-text-secondary hover:text-text-primary text-[11px] font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <ImageIcon className="w-4 h-4 text-gold" />
+              Dari Galeri
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                cameraInputRef.current?.click();
+              }}
+              className="py-2.5 px-3 rounded-xl bg-card hover:bg-card-hover border border-border hover:border-gold/30 text-text-secondary hover:text-text-primary text-[11px] font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Camera className="w-4 h-4 text-gold" />
+              Dari Kamera
+            </button>
+          </div>
+
+          <div className="text-[10px] text-text-disabled bg-[#181818] border border-border px-3 py-1.5 rounded-md mt-2">
             AI akan mendeteksi semua makanan yang terlihat di foto
           </div>
         </div>
