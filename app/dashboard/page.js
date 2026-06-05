@@ -235,7 +235,7 @@ export default function DashboardPage() {
                 <p className="stat-label mb-1">Distribusi Makronutrisi</p>
                 <h3 className="text-base font-semibold text-text-primary">Rata-rata Komposisi</h3>
               </div>
-              <div className="flex-1 relative flex items-center justify-center min-h-[180px]">
+              <div className="flex-1 relative flex items-center justify-center min-h-45">
                 {mounted && (
                   <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
