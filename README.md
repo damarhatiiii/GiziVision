@@ -8,11 +8,11 @@
 
 Aplikasi ini dikembangkan oleh **Tim Bootcamp IT 2026** (Mahasiswa Semester 4, Program Studi Informatika, **Universitas Bina Sarana Informatika**):
 
-1. **Yusuf Herfa Auliansyah**
-2. **Rizqi Nuzul Firman**
-3. **Yusuf Mansur**
-4. **Mabel Fernanda Carelly**
-5. **Yogi Aprilianto**
+1. **Muhammad Damarhati** (15240045)
+2. **Ananta Bagas Sasena** (15240078)
+3. **Achmad Nazzri Adlan Fatkhuladzi** (15240054)
+4. **Akhdan Adiva Sangaji** (15240006)
+5. **Dyas Fathir Arkananta** (15240091)
 
 ---
 
