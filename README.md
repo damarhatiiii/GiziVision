@@ -1,6 +1,6 @@
-# 💼 SalaryVision — Sistem Prediksi Gaji Tech Talent
+# 🍽️ GiziVisionV2 — Platform Analisis Gizi Pangan Indonesia
 
-**SalaryVision** adalah sistem cerdas berbasis web yang dirancang untuk memprediksi estimasi standar gaji *tech talent* (dalam USD/tahun) secara instan menggunakan algoritma Machine Learning yang berjalan sepenuhnya di sisi klien (*client-side*).
+**GiziVisionV2** adalah platform analisis kandungan nutrisi makanan khas Indonesia berbasis *computer vision* (Gemini AI) dan sinkronisasi dataset gizi pangan nasional secara instan.
 
 ---
 
@@ -18,29 +18,25 @@ Aplikasi ini dikembangkan oleh **Tim Bootcamp IT 2026** (Mahasiswa Semester 4, P
 
 ## 1. Identitas Proyek (Project Identity)
 
-* **Nama Aplikasi:** SalaryVision
-* **Tujuan Aplikasi:** Sistem cerdas berbasis web untuk memprediksi estimasi standar gaji *tech talent* (dalam USD/tahun) secara instan.
+* **Nama Aplikasi:** GiziVision (Versi 2)
+* **Tujuan Aplikasi:** Menganalisis kandungan kalori, protein, lemak, dan karbohidrat dari foto makanan khas Indonesia (mendukung deteksi multi-makanan dalam satu piring) secara otomatis dan real-time.
 * **Pengembang:** Tim Bootcamp IT 2026 (Mahasiswa Semester 4 Prodi Informatika, Universitas Bina Sarana Informatika).
 
 ---
 
 ## 2. Spesifikasi Data & Algoritma (Data & Algorithms)
 
-* **Basis Data (Dataset):** Menggunakan data tabular dari Kaggle berjudul **"Salary Prediction for Beginner"**. Model dilatih menggunakan **1.000 sampel data** yang berisi informasi pekerja nyata.
-* **Variabel Prediksi:** Aplikasi menerima 3 input utama dari pengguna:
-  * Pengalaman Kerja (tahun)
-  * Tingkat Pendidikan (SMA, S1, S2, S3)
-  * Usia (tahun)
-* **Algoritma Machine Learning:** Menggunakan algoritma **Multiple Linear Regression** (Regresi Linier Berganda). Model menghitung gaji menggunakan persamaan matematis berdasarkan bobot (*weight*) dari masing-masing input.
-* **Akurasi Model:** Model terbukti sangat akurat dengan hasil pengujian:
-  * **R-Squared ($R^2$):** `0.9178` (Akurasi sebesar **91.78%**)
-  * **Mean Absolute Percentage Error (MAPE):** `7.08%` (Tingkat kesalahan yang sangat rendah)
+* **Basis Data (Dataset):** Menggunakan data tabel gizi pangan resmi **Kementerian Kesehatan Republik Indonesia (Kemenkes RI)** (panganku.org) via *Indonesian Food and Drink Nutrition Dataset* (Kaggle oleh Anas Fikri Hanif) dengan **1.300+ entri data pangan** aktif.
+* **Variabel Analisis:** Aplikasi menerima unggahan berkas foto makanan/minuman (JPEG, PNG, WEBP) serta input nama kustom (*custom name hint*) opsional sebagai petunjuk tambahan bagi AI.
+* **Teknologi AI & Pendeteksian:** Menggunakan model **Gemini 2.5 Flash** (via `@google/generative-ai`) untuk menganalisis objek visual (*Multi-Food Detection*) secara dinamis. Hasil deteksi kemudian dicocokkan secara otomatis dengan nama makanan resmi dalam database lokal (`nutrition.csv`) untuk mendapatkan nilai nutrisi resmi.
+* **Cadangan Estimasi (Fallback):** Jika data pangan tidak terdaftar pada database lokal, sistem menggunakan kalkulasi nutrisi berbasis kecerdasan buatan Gemini AI secara otomatis.
 
 ---
 
 ## 3. Arsitektur Teknis (Technical Architecture)
 
-* **Berbasis Web (Client-Side):** Aplikasi berjalan 100% di peramban web (*browser*) sisi klien. Aplikasi tidak membutuhkan server backend (seperti Flask atau Django) untuk melakukan perhitungan prediksi.
-* **Teknologi Front-End:** Dibangun murni menggunakan **HTML5, CSS3, dan JavaScript (Vanilla)**. Desainnya menggunakan tema *Dark Mode* berkonsep *Glassmorphism* yang modern dan responsif untuk berbagai ukuran layar.
-* **Visualisasi Data:** Sistem menggunakan pustaka eksternal **Chart.js** untuk merender grafik data secara visual dan interaktif.
-* **Deployment:** Source code dikelola menggunakan Git dan telah dipublikasikan secara langsung (*live*) di internet menggunakan layanan **GitHub Pages**.
+* **Kerangka Kerja (Framework):** Dibangun menggunakan **Next.js 15.5.19** (App Router & Turbopack) dengan React 19.
+* **Teknologi Front-End & Animasi:** Styling modern bertema gelap (*Dark Mode*) menggunakan **Tailwind CSS v4** & CSS Kustom. Animasi interaktif didukung oleh **Anime.js**, dan ikon disediakan oleh **Lucide React**.
+* **Visualisasi Data:** Menggunakan library **Recharts** untuk merender grafik kalori harian serta diagram makronutrisi (karbohidrat, protein, lemak) di halaman dashboard secara visual dan interaktif.
+* **Optimalisasi Penyimpanan Lokal (localStorage):** Menyimpan riwayat scan langsung di sisi klien browser secara aman dengan mengompres foto menjadi thumbnail kecil (~5KB) dan membatasi riwayat maksimal 50 pemindaian dengan sistem *auto-trimming* untuk menghindari error memori browser.
+* **Deployment:** Source code dikelola menggunakan Git dan didistribusikan secara online melalui platform GitHub.
