@@ -320,7 +320,7 @@ export default function UploadZone() {
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           className={`
-            relative w-full h-[340px] rounded-xl border-2 border-dashed
+            relative w-full h-85 rounded-xl border-2 border-dashed
             flex flex-col items-center justify-center gap-4 cursor-pointer
             transition-all duration-200
             ${dragActive
@@ -362,7 +362,7 @@ export default function UploadZone() {
           </div>
 
           {/* Gallery / Camera Buttons Grid */}
-          <div className="grid grid-cols-2 gap-3 w-full max-w-[280px] px-2">
+          <div className="grid grid-cols-2 gap-3 w-full max-w-70 px-2">
             <button
               type="button"
               onClick={(e) => {
@@ -420,7 +420,7 @@ export default function UploadZone() {
           {/* File info row */}
           <div className="flex items-center justify-between bg-surface border border-border rounded-lg px-4 py-3">
             <div className="flex items-center gap-3 text-left">
-              <ImageIcon className="w-4 h-4 text-text-muted flex-shrink-0" />
+              <ImageIcon className="w-4 h-4 text-text-muted shrink-0" />
               <div>
                 <p className="text-xs font-semibold text-text-primary truncate max-w-xs">{file?.name}</p>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 text-[10px] text-text-muted">
@@ -501,7 +501,7 @@ export default function UploadZone() {
       {/* Error */}
       {error && (
         <div className="mt-4 flex items-start gap-3 p-4 rounded-lg bg-danger/5 border border-danger/20 text-danger text-sm text-left animate-fade-in">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold mb-0.5">Analisis Gagal</p>
             <p className="text-xs opacity-80">{error}</p>
