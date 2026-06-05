@@ -106,7 +106,16 @@ export async function analyzeImageWithGemini(base64Image, apiKey, customName = '
     return { isFood: true, items };
   } catch (error) {
     console.error('Gemini analysis error:', error);
-    throw new Error('Gagal memproses gambar menggunakan Gemini AI. Pastikan API Key Anda valid dan berkas gambar tidak korup.');
+    const msg = error.message || '';
+    if (msg.includes('API key not valid') || msg.includes('API_KEY_INVALID') || msg.includes('invalid API key')) {
+      throw new Error('API_KEY_INVALID: API Key Gemini tidak valid atau tidak diatur dengan benar.');
+    } else if (msg.includes('fetch failed') || msg.includes('timeout') || msg.includes('timed out') || msg.includes('undici') || msg.includes('network') || msg.includes('ENOTFOUND')) {
+      throw new Error('AI_NO_RESPONSE: AI tidak merespon (kemungkinan masalah koneksi internet atau batas limit API).');
+    } else if (msg.includes('429') || msg.includes('Quota exceeded') || msg.includes('quota') || msg.includes('Quota Failure')) {
+      throw new Error('AI_QUOTA_EXCEEDED: Layanan AI sedang mencapai batas penggunaan. Silakan coba lagi beberapa saat.');
+    } else {
+      throw new Error(`AI_GENERIC_ERROR: Gagal memproses gambar menggunakan Gemini AI. Detail: ${msg}`);
+    }
   }
 }
 

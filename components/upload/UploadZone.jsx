@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { addHistory } from '@/services/history.service';
-import { UploadCloud, X, Sparkles, Loader2, ImageIcon, AlertTriangle, Settings, Check, Key, Camera } from 'lucide-react';
+import { UploadCloud, X, Sparkles, Loader2, ImageIcon, AlertTriangle, AlertCircle, XCircle, CheckCircle, WifiOff, ArrowRight, Settings, Check, Key, Camera } from 'lucide-react';
 
 /**
  * Compress an image to a small thumbnail for localStorage storage.
@@ -56,9 +56,9 @@ function resizeAndCompressImage(file, maxWidth = 1024, maxHeight = 1024, quality
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        
+
         const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        
+
         // Revoke only after successfully drawing and converting to prevent Safari iOS bugs
         URL.revokeObjectURL(objectUrl);
         resolve(compressedDataUrl);
@@ -75,6 +75,39 @@ function resizeAndCompressImage(file, maxWidth = 1024, maxHeight = 1024, quality
   });
 }
 
+/**
+ * Map HTTP status code to custom user-friendly Indonesian messages.
+ */
+function getErrorMessageByStatus(status, fallbackMsg = '') {
+  switch (status) {
+    case 400:
+      return "Sistem tidak dapat mengenali makanan pada gambar yang diunggah.";
+    case 401:
+    case 403:
+      return "Terjadi gangguan pada layanan analisis AI.";
+    case 404:
+      return "Sistem tidak dapat mengenali makanan pada gambar yang diunggah.";
+    case 408:
+      return "Proses analisis memakan waktu terlalu lama. Silakan coba kembali.";
+    case 413:
+      return "Ukuran gambar melebihi batas yang diizinkan.";
+    case 429:
+      return "Layanan AI sedang mencapai batas penggunaan. Silakan coba lagi beberapa saat.";
+    case 500:
+      return "Server sedang mengalami gangguan. Silakan coba kembali nanti.";
+    case 502:
+    case 503:
+      return "Terjadi gangguan pada layanan analisis AI.";
+    case 504:
+      return "Proses analisis memakan waktu terlalu lama. Silakan coba kembali.";
+    default:
+      if (fallbackMsg && (fallbackMsg.includes('fetch failed') || fallbackMsg.includes('network') || fallbackMsg.includes('connection'))) {
+        return "Koneksi internet bermasalah. Periksa jaringan Anda dan coba lagi.";
+      }
+      return "Terjadi gangguan pada layanan analisis AI.";
+  }
+}
+
 export default function UploadZone() {
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState(null);
@@ -82,6 +115,9 @@ export default function UploadZone() {
   const [base64Image, setBase64Image] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorType, setErrorType] = useState('');
+  const [recognizedNames, setRecognizedNames] = useState([]);
+  const [notification, setNotification] = useState(null);
 
   // Gemini Key and Custom Food Name
   const [customName, setCustomName] = useState('');
@@ -92,6 +128,7 @@ export default function UploadZone() {
 
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const customNameInputRef = useRef(null);
   const router = useRouter();
 
   // Manual compression states
@@ -166,22 +203,64 @@ export default function UploadZone() {
   };
 
   const processFile = async (selectedFile) => {
-    // Check type OR file extension to handle iOS HEIC/HEIF correctly
-    const isImage = selectedFile.type.startsWith('image/') || 
-                    /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(selectedFile.name);
+    // Reset previous errors and notifications
+    setError('');
+    setErrorType('');
+    setRecognizedNames([]);
+    setNotification(null);
+
+    // 1. Check if format is supported
+    const isImage = selectedFile.type.startsWith('image/') ||
+      /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(selectedFile.name);
     if (!isImage) {
-      setError('Format berkas harus berupa gambar (JPG, PNG, WEBP).');
+      setNotification({
+        type: 'error',
+        title: 'Analisis Gagal',
+        message: 'Format gambar tidak didukung. Gunakan JPG, PNG, atau WEBP.'
+      });
       return;
     }
-    setError('');
+
+    // 2. Check if file size exceeds the limit (> 10MB)
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setNotification({
+        type: 'error',
+        title: 'Analisis Gagal',
+        message: 'Ukuran gambar melebihi batas yang diizinkan.'
+      });
+      return;
+    }
+
+    // 3. Warning if image is large (> 3MB)
+    if (selectedFile.size > 3 * 1024 * 1024) {
+      setNotification({
+        type: 'warning',
+        title: 'Peringatan',
+        message: 'Ukuran gambar cukup besar sehingga proses mungkin memerlukan waktu lebih lama.'
+      });
+    }
+
+    // 4. Warning if image quality/resolution is low (< 480px width/height)
+    const imgTest = new Image();
+    imgTest.onload = () => {
+      if (imgTest.width < 480 || imgTest.height < 480) {
+        setNotification({
+          type: 'warning',
+          title: 'Peringatan',
+          message: 'Hasil analisis mungkin kurang akurat karena kualitas gambar rendah.'
+        });
+      }
+    };
+    imgTest.src = URL.createObjectURL(selectedFile);
+
     setFile(selectedFile);
     setPreviewUrl(URL.createObjectURL(selectedFile));
-    
+
     // Reset manual compression settings to defaults for new files
     setQuality(0.6);
     setMaxDim(1024);
     setShowCompressSettings(false);
-    
+
     setLoading(true);
     try {
       const compressed = await resizeAndCompressImage(selectedFile, 1024, 1024, 0.6);
@@ -194,7 +273,11 @@ export default function UploadZone() {
         reader.onloadend = () => setBase64Image(reader.result);
         reader.readAsDataURL(selectedFile);
       } else {
-        setError('Gambar dari kamera terlalu besar dan gagal dikompresi di browser Anda. Silakan coba unggah foto dengan resolusi lebih rendah atau pilih dari galeri.');
+        setNotification({
+          type: 'error',
+          title: 'Analisis Gagal',
+          message: 'Sistem tidak dapat mengenali makanan pada gambar yang diunggah.'
+        });
         setLoading(false);
         setFile(null);
         setPreviewUrl('');
@@ -210,6 +293,9 @@ export default function UploadZone() {
     setPreviewUrl('');
     setBase64Image('');
     setError('');
+    setErrorType('');
+    setRecognizedNames([]);
+    setNotification(null);
     setCustomName('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -232,20 +318,30 @@ export default function UploadZone() {
   };
 
   const handleAnalyze = async () => {
-    if (!base64Image) return;
+    if (!base64Image) {
+      setNotification({
+        type: 'error',
+        title: 'Analisis Gagal',
+        message: 'Silakan unggah foto makanan terlebih dahulu.'
+      });
+      return;
+    }
     setLoading(true);
     setError('');
+    setErrorType('');
+    setRecognizedNames([]);
+    setNotification(null);
     try {
       const userApiKey = localStorage.getItem('gizivision_gemini_key') || '';
       const response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'x-gemini-key': userApiKey
         },
-        body: JSON.stringify({ 
-          image: base64Image, 
-          fileName: file.name,
+        body: JSON.stringify({
+          image: base64Image,
+          fileName: file?.name || 'makanan.jpg',
           customName: customName.trim()
         }),
       });
@@ -259,17 +355,17 @@ export default function UploadZone() {
         const text = await response.text();
         console.error('Server returned non-JSON response:', text);
         
-        if (response.status === 504) {
-          throw new Error('Server Timeout (Penyebab: Gemini AI memakan waktu terlalu lama atau koneksi lambat). Silakan coba lagi.');
-        } else if (response.status === 413) {
-          throw new Error('Gambar terlalu besar untuk diunggah ke server.');
-        } else {
-          throw new Error(`Gagal menghubungi server (${response.status}). Coba lagi beberapa saat lagi.`);
-        }
+        const err = new Error('Server returned non-JSON response');
+        err.status = response.status;
+        throw err;
       }
 
       if (!response.ok) {
-        throw new Error(data?.error || 'Gagal menganalisis gambar.');
+        const err = new Error(data?.error || 'Gagal menganalisis gambar.');
+        err.status = response.status;
+        err.errorType = data?.errorType || 'GENERAL_ERROR';
+        err.recognizedNames = data?.recognizedNames || [];
+        throw err;
       }
 
       // Create small thumbnail for localStorage (not the full image)
@@ -282,10 +378,50 @@ export default function UploadZone() {
         imagePreview: thumbnail,
       });
 
-      if (savedScan) router.push(`/analysis?id=${savedScan.id}`);
-      else throw new Error('Gagal menyimpan hasil analisis.');
+      if (savedScan) {
+        setNotification({
+          type: 'success',
+          title: 'Analisis Berhasil',
+          message: 'Foto berhasil dianalisis dan kandungan nutrisi telah dihitung.'
+        });
+        setTimeout(() => {
+          router.push(`/analysis?id=${savedScan.id}`);
+        }, 1500);
+      } else {
+        throw new Error('Gagal menyimpan hasil analisis.');
+      }
     } catch (err) {
-      setError(err.message || 'Terjadi kesalahan saat menganalisis.');
+      console.error('Gemini API/Server raw error debug details:', err); // Log details in console for debugging
+      
+      let userFriendlyMessage = "Terjadi gangguan pada layanan analisis AI.";
+      
+      if (err.errorType === 'FOOD_NOT_FOUND_IN_DATASET') {
+        setError('Makanan tidak ada di data, mohon isi nama makanan.');
+        setErrorType(err.errorType);
+        setRecognizedNames(err.recognizedNames || []);
+        
+        setNotification({
+          type: 'error',
+          title: 'Analisis Gagal',
+          message: 'Sistem tidak dapat mengenali makanan pada gambar yang diunggah.'
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (err.message && (err.message.includes('fetch failed') || err.message.includes('Failed to fetch') || !navigator.onLine)) {
+        userFriendlyMessage = "Koneksi internet bermasalah. Periksa jaringan Anda dan coba lagi.";
+      } else if (err.status) {
+        userFriendlyMessage = getErrorMessageByStatus(err.status, err.message);
+      } else if (err.message && (err.message.includes('timeout') || err.message.includes('timed out'))) {
+        userFriendlyMessage = "Proses analisis memakan waktu terlalu lama. Silakan coba kembali.";
+      }
+
+      setNotification({
+        type: 'error',
+        title: 'Analisis Gagal',
+        message: userFriendlyMessage
+      });
       setLoading(false);
     }
   };
@@ -294,7 +430,7 @@ export default function UploadZone() {
     <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in">
 
       {/* ── API STATUS BAR ── */}
-      <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3.5 transition-all">
+      <div className="flex items-center bg-surface border border-border rounded-xl p-3.5 transition-all">
         <div className="flex items-center gap-3">
           <div className="relative flex h-2.5 w-2.5">
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${(hasServerKey || hasApiKey) ? 'bg-success' : 'bg-warning'}`}></span>
@@ -305,65 +441,55 @@ export default function UploadZone() {
               {(hasServerKey || hasApiKey) ? 'Mode AI Aktif (Gemini)' : 'Mode Simulasi (Mock)'}
             </p>
             <p className="text-[10px] text-text-muted">
-              {hasServerKey 
-                ? 'API Key terkonfigurasi di server. Siap menganalisis gambar riil.' 
-                : hasApiKey 
-                  ? 'API Key terkonfigurasi di browser Anda. Siap menganalisis gambar riil.' 
+              {hasServerKey
+                ? 'API Key terkonfigurasi di server. Siap menganalisis gambar riil.'
+                : hasApiKey
+                  ? 'API Key terkonfigurasi di browser Anda. Siap menganalisis gambar riil.'
                   : 'Menggunakan kecocokan nama file & fallback acak.'
               }
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className={`
-            p-2 rounded-lg border border-border flex items-center justify-center gap-1.5 text-xs font-medium transition-all
-            ${showSettings ? 'bg-card text-gold border-gold/45 shadow-[0_0_8px_rgba(212,175,55,0.1)]' : 'bg-card text-text-secondary hover:text-text-primary hover:border-text-muted'}
-          `}
-        >
-          <Settings className="w-3.5 h-3.5" />
-          Pengaturan Key
-        </button>
       </div>
 
-      {/* ── SETTINGS COLLAPSIBLE PANEL ── */}
-      {showSettings && (
-        <div className="card p-5 space-y-3.5 text-left border-gold/20 shadow-lg">
-          <div className="flex items-center gap-2">
-            <Key className="w-4 h-4 text-gold" />
-            <p className="text-xs font-bold uppercase tracking-widest text-gold">Konfigurasi Gemini API</p>
-          </div>
-          <p className="text-xs text-text-secondary leading-relaxed">
-            {hasServerKey 
-              ? 'API Key Gemini sudah terkonfigurasi di sisi server (.env.local). Anda tidak perlu memasukkan key secara manual, kecuali jika ingin menimpa (override) dengan key Anda sendiri.'
-              : 'Untuk analisis foto makanan yang akurat dan deteksi wajah otomatis, masukkan Gemini API Key Anda. Key disimpan dengan aman di penyimpanan lokal browser Anda. Dapatkan Key secara gratis di Google AI Studio.'
-            }
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="password"
-              placeholder={hasServerKey ? "Menggunakan key dari server (tersembunyi)" : "Masukkan AIzaSy..."}
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              className="input-premium font-mono text-xs flex-1"
-            />
-            <button
-              onClick={handleSaveApiKey}
-              className="btn-primary py-2 px-4 text-xs font-semibold"
-            >
-              <Check className="w-3.5 h-3.5" /> Simpan
-            </button>
-          </div>
-          {hasApiKey && (
-            <div className="flex justify-end">
-              <button
-                onClick={handleClearApiKey}
-                className="text-[10px] text-danger hover:underline font-medium transition-all"
-              >
-                Hapus API Key yang Tersimpan di Browser
-              </button>
+      {/* ── NOTIFICATION COMPONENT ── */}
+      {notification && (
+        <div className={`
+          p-4 rounded-xl flex items-start justify-between gap-3 shadow-lg border animate-fade-in text-left relative
+          bg-surface/75 backdrop-blur-md transition-all duration-300
+          ${notification.type === 'success' 
+            ? 'border-success/30 text-success shadow-success/5' 
+            : notification.type === 'warning' 
+              ? 'border-warning/30 text-warning shadow-warning/5' 
+              : 'border-danger/30 text-danger shadow-danger/5'
+          }
+        `}>
+          <div className="flex items-start gap-3">
+            <div className={`
+              w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5
+              ${notification.type === 'success' 
+                ? 'bg-success/15 text-success' 
+                : notification.type === 'warning' 
+                  ? 'bg-warning/15 text-warning' 
+                  : 'bg-danger/15 text-danger'
+              }
+            `}>
+              {notification.type === 'success' && <CheckCircle className="w-5 h-5" />}
+              {notification.type === 'warning' && <AlertTriangle className="w-5 h-5" />}
+              {notification.type === 'error' && <XCircle className="w-5 h-5" />}
             </div>
-          )}
+            <div>
+              <h4 className="text-sm font-bold text-text-primary mb-0.5">{notification.title}</h4>
+              <p className="text-xs opacity-90 leading-relaxed text-text-secondary">{notification.message}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            className="text-text-muted hover:text-text-primary transition-colors cursor-pointer shrink-0 absolute top-3 right-3 p-1 rounded-md hover:bg-white/5"
+            aria-label="Tutup Notifikasi"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -400,7 +526,7 @@ export default function UploadZone() {
             capture="environment"
             onChange={handleChange}
           />
-          
+
           <div className={`
             w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-200
             ${dragActive ? 'bg-gold/15 text-gold' : 'bg-card text-text-muted'}
@@ -451,7 +577,7 @@ export default function UploadZone() {
       ) : (
         /* ── PREVIEW STATE ── */
         <div className="card p-5 space-y-4">
-          
+
           {/* Image */}
           <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-bg border border-border flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -522,7 +648,7 @@ export default function UploadZone() {
                 {showCompressSettings ? 'Sembunyikan' : 'Sesuaikan Ukuran'}
               </span>
             </button>
-            
+
             {showCompressSettings && (
               <div className="p-4 border-t border-border bg-card/40 space-y-4">
                 {/* Quality Slider */}
@@ -576,13 +702,17 @@ export default function UploadZone() {
               Nama Makanan (Opsional)
             </label>
             <input
+              ref={customNameInputRef}
               id="custom-food-name"
               type="text"
               placeholder="Contoh: Nasi Goreng, Telur Ceplok, Kerupuk (pisahkan dengan koma)"
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
               disabled={loading}
-              className="input-premium text-xs"
+              className={`input-premium text-xs transition-all duration-300 ${errorType === 'FOOD_NOT_FOUND_IN_DATASET'
+                  ? 'border-warning/60 focus:border-warning ring-2 ring-warning/20 shadow-[0_0_12px_rgba(192,138,40,0.15)]'
+                  : ''
+                }`}
             />
             <p className="text-[9px] text-text-disabled leading-relaxed">
               * Sebutkan semua makanan yang terlihat, pisahkan dengan koma untuk deteksi lebih akurat.
@@ -617,13 +747,51 @@ export default function UploadZone() {
         </div>
       )}
 
-      {/* Error */}
-      {error && (
-        <div className="mt-4 flex items-start gap-3 p-4 rounded-lg bg-danger/5 border border-danger/20 text-danger text-sm text-left animate-fade-in">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold mb-0.5">Analisis Gagal</p>
-            <p className="text-xs opacity-80">{error}</p>
+      {/* Dataset Warning Panel */}
+      {error && errorType === 'FOOD_NOT_FOUND_IN_DATASET' && (
+        <div className="mt-4 animate-fade-in">
+          {/* ── FOOD NOT FOUND IN DATASET ERROR (Warning Theme) ── */}
+          <div className="p-5 rounded-xl border border-warning/20 bg-warning/5 text-left space-y-3 shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-warning/15 flex items-center justify-center text-warning shrink-0">
+                <AlertCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-text-primary">Makanan Tidak Ada di Data</h4>
+                <p className="text-[10px] text-warning/90 font-semibold uppercase tracking-wider">Perlu Masukan Nama Makanan</p>
+              </div>
+            </div>
+
+            <div className="text-xs text-text-secondary leading-relaxed space-y-2">
+              <p>
+                Sistem mendeteksi kemungkinan makanan: {recognizedNames.length > 0 ? (
+                  <span className="font-semibold text-text-primary">{recognizedNames.map(name => `"${name}"`).join(', ')}</span>
+                ) : (
+                  <span className="italic text-text-muted">Tidak dikenal</span>
+                )}
+                , namun data nutrisinya tidak ditemukan dalam database gizi nasional kami.
+              </p>
+              <div className="p-3 bg-surface/50 rounded-lg border border-border/40 text-text-secondary text-[11px] flex items-start gap-2">
+                <span className="text-warning font-bold shrink-0 mt-0.5">⚠️</span>
+                <span><strong>Makanan tidak ada di data, mohon isi nama makanan</strong> secara manual dengan nama makanan khas Indonesia yang terdaftar (contoh: Nasi Goreng, Bakso, Soto Ayam).</span>
+              </div>
+            </div>
+
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (customNameInputRef.current) {
+                    customNameInputRef.current.focus();
+                    customNameInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
+                className="btn-secondary py-1.5 px-3.5 text-xs text-warning hover:text-warning border-warning/20 hover:border-warning/50 hover:bg-warning/5 font-semibold flex items-center gap-1.5 transition-all w-full sm:w-auto cursor-pointer"
+              >
+                Isi Nama Makanan Sekarang
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
       )}

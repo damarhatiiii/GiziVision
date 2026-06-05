@@ -84,6 +84,7 @@ export async function POST(request) {
       const names = resolvedItems.map(i => `"${i.name}"`).join(', ');
       return NextResponse.json({
         error: `Makanan terdeteksi (${names}) tetapi informasi nutrisinya tidak ditemukan dalam database.`,
+        errorType: 'FOOD_NOT_FOUND_IN_DATASET',
         recognizedNames: resolvedItems.map(i => i.name)
       }, { status: 404 });
     }
@@ -115,7 +116,41 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('Analyze API error:', error);
-    return NextResponse.json({ error: 'Failed to analyze food image' }, { status: 500 });
+    const errorMessage = error.message || '';
+    let userMessage = 'Gagal menganalisis gambar makanan.';
+    let errorType = 'GENERAL_ERROR';
+    let status = 500;
+
+    if (errorMessage.startsWith('API_KEY_INVALID:')) {
+      errorType = 'INVALID_API_KEY';
+      userMessage = errorMessage.replace('API_KEY_INVALID:', '').trim();
+      status = 401;
+    } else if (errorMessage.startsWith('AI_NO_RESPONSE:')) {
+      errorType = 'AI_NO_RESPONSE';
+      userMessage = errorMessage.replace('AI_NO_RESPONSE:', '').trim();
+      status = 504;
+    } else if (errorMessage.startsWith('AI_QUOTA_EXCEEDED:')) {
+      errorType = 'AI_QUOTA_EXCEEDED';
+      userMessage = errorMessage.replace('AI_QUOTA_EXCEEDED:', '').trim();
+      status = 429;
+    } else if (errorMessage.startsWith('AI_GENERIC_ERROR:')) {
+      errorType = 'AI_SERVICE_ERROR';
+      userMessage = errorMessage.replace('AI_GENERIC_ERROR:', '').trim();
+      status = 502;
+    } else {
+      if (errorMessage.includes('fetch failed') || errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+        errorType = 'AI_NO_RESPONSE';
+        userMessage = 'AI tidak merespon (kemungkinan masalah koneksi internet atau batas limit API).';
+        status = 504;
+      } else {
+        userMessage = errorMessage || 'Terjadi kesalahan sistem internal.';
+      }
+    }
+
+    return NextResponse.json({ 
+      error: userMessage,
+      errorType: errorType
+    }, { status });
   }
 }
 

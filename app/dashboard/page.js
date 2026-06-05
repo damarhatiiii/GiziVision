@@ -208,7 +208,7 @@ export default function DashboardPage() {
                     <AreaChart data={chartCalories} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                       <defs>
                         <linearGradient id="gradCal" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="#6F4E37" stopOpacity={0.35} />
+                          <stop offset="5%" stopColor="#6F4E37" stopOpacity={0.35} />
                           <stop offset="95%" stopColor="#6F4E37" stopOpacity={0} />
                         </linearGradient>
                       </defs>
@@ -328,23 +328,6 @@ export default function DashboardPage() {
             <span className="text-[10px] font-bold text-gold uppercase tracking-wider block mb-1">Pengembang Aplikasi</span>
             <h4 className="text-sm font-bold text-text-primary">Tim Bootcamp IT 2026</h4>
             <p className="text-xs text-text-muted mt-0.5">Mahasiswa Semester 4 Prodi Informatika, Universitas Bina Sarana Informatika</p>
-          </div>
-          <div className="flex flex-wrap gap-2 md:justify-end max-w-2xl">
-            {[
-              { name: 'Muhammad Damarhati', nim: '15240045' },
-              { name: 'Ananta Bagas Sasena', nim: '15240078' },
-              { name: 'Achmad Nazzri Adlan Fatkhuladzi', nim: '15240054' },
-              { name: 'Akhdan Adiva Sangaji', nim: '15240006' },
-              { name: 'Dyas Fathir Arkananta', nim: '15240091' },
-            ].map((member, i) => (
-              <div 
-                key={i} 
-                className="px-3 py-1.5 rounded-lg bg-surface border border-border/80 flex flex-col items-start gap-0.5 text-left hover:border-gold/30 transition-colors"
-              >
-                <span className="text-xs font-semibold text-text-primary leading-none">{member.name}</span>
-                <span className="text-[10px] text-text-muted leading-none font-mono mt-0.5">{member.nim}</span>
-              </div>
-            ))}
           </div>
         </div>
       </div>
